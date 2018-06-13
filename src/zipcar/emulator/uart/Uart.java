@@ -9,6 +9,8 @@ import com.microchip.mplab.mdbcore.simulator.MessageHandler;
 import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataStore;
 import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
 import com.microchip.mplab.mdbcore.simulator.SFR.SFRObserver;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.util.LinkedList;
 import org.openide.util.lookup.ServiceProvider;
 
@@ -28,6 +30,12 @@ public class Uart implements Peripheral {
     LinkedList<Character> chars = new LinkedList();
     MySFRObserver sfrObs = new MySFRObserver();
     
+    // declare pipe vars
+    String reqPipePath = "/Users/cgoldader/pic-brain/LMBrain.X/sim/u2req"; // TEMPORARY PATHS -- CHANGE
+    String resPipePath = "/Users/cgoldader/pic-brain/LMBrain.X/sim/u2res"; // >>>>>>>>>>>>>>>>>>>>>>>>>
+    FileOutputStream requestStream = null;
+    FileInputStream responseStream = null;
+    
     @Override
     public boolean init(SimulatorDataStore DS) {
         // initialize instance variables
@@ -37,6 +45,14 @@ public class Uart implements Peripheral {
         sfrInterrupt = sfrs.getSFR("IFS1");
         sfrSTA = sfrs.getSFR("U2STA");
         sfrTX = sfrs.getSFR("U2TXREG");
+        
+        // prepare pipes (need to catch exceptions)
+        try {
+            requestStream = new FileOutputStream(reqPipePath);
+            responseStream = new FileInputStream(resPipePath);
+        } catch (Exception e) {
+            messageHandler.outputMessage(e.toString());
+        }
         
         // remove UART2
         PeripheralSet periphSet = DS.getPeripheralSet();
