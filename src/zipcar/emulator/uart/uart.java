@@ -1,0 +1,97 @@
+package zipcar.emulator.uart;
+
+
+import com.microchip.mplab.mdbcore.simulator.Peripheral;
+import com.microchip.mplab.mdbcore.simulator.SFR;
+import com.microchip.mplab.mdbcore.simulator.SFRSet;
+import com.microchip.mplab.mdbcore.simulator.scl.SCL;
+import com.microchip.mplab.mdbcore.simulator.MessageHandler;
+import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataStore;
+import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
+import java.util.LinkedList;
+import org.openide.util.lookup.ServiceProvider;
+
+@ServiceProvider(path=Peripheral.REGISTRATION_PATH, service=Peripheral.class)
+public class uart implements Peripheral {
+
+    static MessageHandler messageHandler = null;
+    static SFR sfrBuff = null;
+    static SFR sfrInterrupt = null;    
+    static SFR sfrSTA = null;
+    int updateCounter = 0;
+    static SFRSet sfrs;
+    SCL scl;
+    boolean notInitialized = true;
+    int cycleCount = 0;
+    LinkedList<Character> chars = new LinkedList();
+    
+    @Override
+    public boolean init(SimulatorDataStore DS) {
+        // initialize instance variables
+        messageHandler = DS.getMessageHandler();
+        sfrs = DS.getSFRSet();
+        sfrBuff = sfrs.getSFR("U2RXREG");
+        sfrInterrupt = sfrs.getSFR("IFS1");
+        sfrSTA = sfrs.getSFR("U2STA");
+        
+        // remove UART2
+        PeripheralSet periphSet = DS.getPeripheralSet();
+        Peripheral uartPeriph = periphSet.getPeripheral("UART2");
+        if (uartPeriph != null) {
+            uartPeriph.deInit();
+            periphSet.removePeripheral(uartPeriph);
+        }
+        
+        // add peripheral to list and return true
+        DS.getPeripheralSet().addToActivePeripheralList(this);
+        return true;
+    }
+    
+    @Override
+    public void deInit() {
+        
+    }
+    
+    @Override
+    public void addObserver(PeripheralObserver observer) {
+        
+    }
+    
+    @Override
+    public String getName() {
+        return "UART2_SIM";
+    }
+    
+    @Override
+    public void removeObserver(PeripheralObserver observer) {
+        
+    }
+    
+    @Override
+    public void reset() {
+        
+    }
+    
+    @Override
+    public void update() {
+        if (cycleCount % 1000000 == 0) {
+            if (!chars.isEmpty()) {
+                if (sfrSTA.getFieldValue("UTXEN") == 1) {
+                    messageHandler.outputMessage(chars.peek() + "");
+                    sfrBuff.privilegedWrite(chars.pop());   // Inject the next char
+                    sfrInterrupt.privilegedSetFieldValue("U2RXIF", 1); // Trigger the interrupt
+                    // sfrSTA.privilegedSetFieldValue("URXDA", 1); // Trigger the STA
+                }
+            } else {
+                setString("Hi\n");
+            }
+        }
+        cycleCount++;
+    }
+    
+    public void setString(String str) {
+        for (int i = 0; i < str.length(); i++){
+            chars.add(str.charAt(i));
+        }
+    }
+}
