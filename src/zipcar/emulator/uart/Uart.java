@@ -8,6 +8,7 @@ import com.microchip.mplab.mdbcore.simulator.MessageHandler;
 import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataStore;
 import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
 import com.microchip.mplab.mdbcore.simulator.SFR.SFRObserver;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileInputStream;
 import java.util.LinkedList;
@@ -32,6 +33,8 @@ public class Uart implements Peripheral {
     // declare pipe vars
     String reqPipePath = "/Users/cgoldader/pic-brain/LMBrain.X/sim/u2req"; // TEMPORARY PATHS -- CHANGE
     String resPipePath = "/Users/cgoldader/pic-brain/LMBrain.X/sim/u2res"; // >>>>>>>>>>>>>>>>>>>>>>>>>
+    File in = new File(reqPipePath);
+    File out = new File(reqPipePath);
     static FileOutputStream requestStream = null;
     static FileInputStream responseStream = null;
 
@@ -44,16 +47,6 @@ public class Uart implements Peripheral {
         sfrInterrupt = sfrs.getSFR("IFS1");
         sfrSTA = sfrs.getSFR("U2STA");
         sfrTX = sfrs.getSFR("U2TXREG");
-
-        // prepare pipes (need to catch exceptions)
-        try {
-            Runtime.getRuntime().exec("mkfifo " + reqPipePath); // Create pipes if they don't exist
-            Runtime.getRuntime().exec("mkfifo " + resPipePath);
-            requestStream = new FileOutputStream(reqPipePath);
-            responseStream = new FileInputStream(resPipePath);
-        } catch (Exception e) {
-            messageHandler.outputError(e);
-        }
 
         // remove UART2
         PeripheralSet periphSet = DS.getPeripheralSet();
@@ -95,15 +88,31 @@ public class Uart implements Peripheral {
 
     @Override
     public void update() {
-        try {
-            if (responseStream.available() != 0) {
-                chars.add((char) responseStream.read());
-            }
-        } catch (Exception e) {
-            messageHandler.outputError(e);
-        }
-        if (cycleCount % 1000000 == 0) {
+        if (cycleCount == 1000000) {
             sfrTX.addObserver(sfrObs);
+
+                // prepare pipes (need to catch exceptions)
+            try {
+                // Runtime.getRuntime().exec("mkfifo " + reqPipePath); // Create pipes if they don't exist
+                // Runtime.getRuntime().exec("mkfifo " + resPipePath);
+                messageHandler.outputMessage("I am trying to init! I promise!");
+                requestStream = new FileOutputStream(in);
+                responseStream = new FileInputStream(out);
+            } catch (Exception e) {
+                messageHandler.outputMessage("Yikes. Hit an error: " + e.toString());
+                messageHandler.outputError(e);
+            }
+            try {
+                if (responseStream.available() != 0) {
+                    chars.add((char) responseStream.read());
+                }
+            } catch (Exception e) {
+                messageHandler.outputMessage("Yikes. Hit an error: " + e.toString());
+                messageHandler.outputError(e);
+            }
+        }
+        
+        if (cycleCount % 1000000 == 0) {
             if (!chars.isEmpty()) {
                 if (sfrSTA.getFieldValue("UTXEN") == 1) {
                     // messageHandler.outputMessage(chars.peek() + "");
@@ -128,6 +137,7 @@ public class Uart implements Peripheral {
         try {
             requestStream.write((byte) currentChar);
         } catch (Exception e) {
+            messageHandler.outputMessage("Yikes, hit an exception in output");
             messageHandler.outputError(e);
         }
     }
