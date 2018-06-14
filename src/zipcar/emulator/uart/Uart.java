@@ -123,9 +123,10 @@ public class Uart implements Peripheral {
     }
 
     public static void output() {
-        messageHandler.outputMessage((char) sfrTX.read() + "");
+        char currentChar = (char) sfrTX.read();
+        messageHandler.outputMessage(currentChar + "");
         try {
-            requestStream.write((byte) sfrTX.read());
+            requestStream.write((byte) currentChar);
         } catch (Exception e) {
             messageHandler.outputError(e);
         }
