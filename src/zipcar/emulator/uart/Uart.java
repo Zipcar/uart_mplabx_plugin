@@ -1,6 +1,5 @@
 package zipcar.emulator.uart;
 
-
 import com.microchip.mplab.mdbcore.simulator.Peripheral;
 import com.microchip.mplab.mdbcore.simulator.SFR;
 import com.microchip.mplab.mdbcore.simulator.SFRSet;
@@ -14,12 +13,12 @@ import java.io.FileInputStream;
 import java.util.LinkedList;
 import org.openide.util.lookup.ServiceProvider;
 
-@ServiceProvider(path=Peripheral.REGISTRATION_PATH, service=Peripheral.class)
+@ServiceProvider(path = Peripheral.REGISTRATION_PATH, service = Peripheral.class)
 public class Uart implements Peripheral {
 
     static MessageHandler messageHandler = null;
     static SFR sfrBuff = null;
-    static SFR sfrInterrupt = null;    
+    static SFR sfrInterrupt = null;
     static SFR sfrSTA = null;
     static SFR sfrTX = null;
     int updateCounter = 0;
@@ -27,15 +26,15 @@ public class Uart implements Peripheral {
     SCL scl;
     boolean notInitialized = true;
     int cycleCount = 0;
-    LinkedList<Character> chars = new LinkedList();
+    LinkedList<Character> chars = new LinkedList<Character>();
     MySFRObserver sfrObs = new MySFRObserver();
-    
+
     // declare pipe vars
     String reqPipePath = "/Users/cgoldader/pic-brain/LMBrain.X/sim/u2req"; // TEMPORARY PATHS -- CHANGE
     String resPipePath = "/Users/cgoldader/pic-brain/LMBrain.X/sim/u2res"; // >>>>>>>>>>>>>>>>>>>>>>>>>
-    FileOutputStream requestStream = null;
-    FileInputStream responseStream = null;
-    
+    static FileOutputStream requestStream = null;
+    static FileInputStream responseStream = null;
+
     @Override
     public boolean init(SimulatorDataStore DS) {
         // initialize instance variables
@@ -45,15 +44,17 @@ public class Uart implements Peripheral {
         sfrInterrupt = sfrs.getSFR("IFS1");
         sfrSTA = sfrs.getSFR("U2STA");
         sfrTX = sfrs.getSFR("U2TXREG");
-        
+
         // prepare pipes (need to catch exceptions)
         try {
+            Runtime.getRuntime().exec("mkfifo " + reqPipePath); // Create pipes if they don't exist
+            Runtime.getRuntime().exec("mkfifo " + resPipePath);
             requestStream = new FileOutputStream(reqPipePath);
             responseStream = new FileInputStream(resPipePath);
         } catch (Exception e) {
-            messageHandler.outputMessage(e.toString());
+            messageHandler.outputError(e);
         }
-        
+
         // remove UART2
         PeripheralSet periphSet = DS.getPeripheralSet();
         Peripheral uartPeriph = periphSet.getPeripheral("UART2");
@@ -61,39 +62,46 @@ public class Uart implements Peripheral {
             uartPeriph.deInit();
             periphSet.removePeripheral(uartPeriph);
         }
-        
+
         // add peripheral to list and return true
         DS.getPeripheralSet().addToActivePeripheralList(this);
         return true;
     }
-    
+
     @Override
     public void deInit() {
-        
+
     }
-    
+
     @Override
     public void addObserver(PeripheralObserver observer) {
-        
+
     }
-    
+
     @Override
     public String getName() {
         return "UART2_SIM";
     }
-    
+
     @Override
     public void removeObserver(PeripheralObserver observer) {
-        
+
     }
-    
+
     @Override
     public void reset() {
-        
+
     }
-    
+
     @Override
     public void update() {
+        try {
+            if (responseStream.available() != 0) {
+                chars.add((char) responseStream.read());
+            }
+        } catch (Exception e) {
+            messageHandler.outputError(e);
+        }
         if (cycleCount % 1000000 == 0) {
             sfrTX.addObserver(sfrObs);
             if (!chars.isEmpty()) {
@@ -103,26 +111,29 @@ public class Uart implements Peripheral {
                     sfrInterrupt.privilegedSetFieldValue("U2RXIF", 1); // Trigger the interrupt
                     // sfrSTA.privilegedSetFieldValue("URXDA", 1); // Trigger the STA
                 }
-            } else {
-                setString("Hi\n");
             }
         }
         cycleCount++;
     }
-    
+
     public void setString(String str) {
-        for (int i = 0; i < str.length(); i++){
+        for (int i = 0; i < str.length(); i++) {
             chars.add(str.charAt(i));
         }
     }
-    
+
     public static void output() {
         messageHandler.outputMessage((char) sfrTX.read() + "");
+        try {
+            requestStream.write((byte) sfrTX.read());
+        } catch (Exception e) {
+            messageHandler.outputError(e);
+        }
     }
 }
 
 class MySFRObserver implements SFRObserver {
-    
+
     @Override
     public void update(SFR generator, SFREvent event, SFREventSource source) {
         if (event == SFREvent.SFR_CHANGED) {
