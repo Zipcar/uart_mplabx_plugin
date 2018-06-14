@@ -1,6 +1,8 @@
 package zipcar.emulator.uart;
 
-
+import com.lts.ipc.fifo.FIFO;
+import com.lts.ipc.fifo.FIFOImpl;
+import com.lts.ipc.IPCException;
 import com.microchip.mplab.mdbcore.simulator.Peripheral;
 import com.microchip.mplab.mdbcore.simulator.SFR;
 import com.microchip.mplab.mdbcore.simulator.SFRSet;
@@ -9,17 +11,20 @@ import com.microchip.mplab.mdbcore.simulator.MessageHandler;
 import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataStore;
 import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
 import com.microchip.mplab.mdbcore.simulator.SFR.SFRObserver;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.util.LinkedList;
 import java.io.RandomAccessFile;
 import java.io.FileNotFoundException;
 import org.openide.util.lookup.ServiceProvider;
 
-@ServiceProvider(path=Peripheral.REGISTRATION_PATH, service=Peripheral.class)
+@ServiceProvider(path = Peripheral.REGISTRATION_PATH, service = Peripheral.class)
 public class Uart implements Peripheral {
 
     static MessageHandler messageHandler = null;
     static SFR sfrBuff = null;
-    static SFR sfrInterrupt = null;    
+    static SFR sfrInterrupt = null;
     static SFR sfrSTA = null;
     static SFR sfrTX = null;
     int updateCounter = 0;
@@ -27,7 +32,7 @@ public class Uart implements Peripheral {
     SCL scl;
     boolean notInitialized = true;
     int cycleCount = 0;
-    LinkedList<Character> chars = new LinkedList();
+    LinkedList<Character> chars = new LinkedList<Character>();
     MySFRObserver sfrObs = new MySFRObserver();
     static RandomAccessFile request = null;
     static RandomAccessFile response = null;
@@ -35,6 +40,7 @@ public class Uart implements Peripheral {
     
     @Override
     public boolean init(SimulatorDataStore DS) {
+        
         // initialize instance variables
         messageHandler = DS.getMessageHandler();
         sfrs = DS.getSFRSet();
@@ -51,36 +57,37 @@ public class Uart implements Peripheral {
             periphSet.removePeripheral(uartPeriph);
         }
         
+        messageHandler.outputMessage("External Peripheral Initialized: UART");
         // add peripheral to list and return true
         DS.getPeripheralSet().addToActivePeripheralList(this);
         return true;
     }
-    
+
     @Override
     public void deInit() {
-        
+
     }
-    
+
     @Override
     public void addObserver(PeripheralObserver observer) {
-        
+
     }
-    
+
     @Override
     public String getName() {
         return "UART2_SIM";
     }
-    
+
     @Override
     public void removeObserver(PeripheralObserver observer) {
-        
+
     }
-    
+
     @Override
     public void reset() {
-        
+
     }
-    
+
     @Override
     public void update() {
         if (cycleCount == 1000000) {
@@ -108,13 +115,13 @@ public class Uart implements Peripheral {
         }
         cycleCount++;
     }
-    
+
     public void setString(String str) {
-        for (int i = 0; i < str.length(); i++){
+        for (int i = 0; i < str.length(); i++) {
             chars.add(str.charAt(i));
         }
     }
-    
+
     public static void output() {
         try {
             request.write((byte) sfrTX.read()); 
@@ -126,7 +133,7 @@ public class Uart implements Peripheral {
 }
 
 class MySFRObserver implements SFRObserver {
-    
+
     @Override
     public void update(SFR generator, SFREvent event, SFREventSource source) {
         if (event == SFREvent.SFR_CHANGED) {
