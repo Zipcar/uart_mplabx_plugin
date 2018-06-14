@@ -1,5 +1,8 @@
 package zipcar.emulator.uart;
 
+import com.lts.ipc.fifo.FIFO;
+import com.lts.ipc.fifo.FIFOImpl;
+import com.lts.ipc.IPCException;
 import com.microchip.mplab.mdbcore.simulator.Peripheral;
 import com.microchip.mplab.mdbcore.simulator.SFR;
 import com.microchip.mplab.mdbcore.simulator.SFRSet;
@@ -29,17 +32,24 @@ public class Uart implements Peripheral {
     int cycleCount = 0;
     LinkedList<Character> chars = new LinkedList<Character>();
     MySFRObserver sfrObs = new MySFRObserver();
+    static byte[] resBuff;
+    static byte[] reqBuff;
 
     // declare pipe vars
-    String reqPipePath = "/Users/cgoldader/pic-brain/LMBrain.X/sim/u2req"; // TEMPORARY PATHS -- CHANGE
-    String resPipePath = "/Users/cgoldader/pic-brain/LMBrain.X/sim/u2res"; // >>>>>>>>>>>>>>>>>>>>>>>>>
-    File in = new File(reqPipePath);
-    File out = new File(reqPipePath);
+    static String reqPipePath = "/Users/cgoldader/pic-brain/LMBrain.X/sim/u2req"; // TEMPORARY PATHS -- CHANGE
+    static String resPipePath = "/Users/cgoldader/pic-brain/LMBrain.X/sim/u2res"; // >>>>>>>>>>>>>>>>>>>>>>>>>
+    static File in = new File(reqPipePath);
+    static File out = new File(reqPipePath);
     static FileOutputStream requestStream = null;
     static FileInputStream responseStream = null;
+    
+    // new pipe vars
+    static FIFO resFIFO = new FIFO("res");
+    static FIFO reqFIFO = new FIFO("req");
 
     @Override
     public boolean init(SimulatorDataStore DS) {
+        
         // initialize instance variables
         messageHandler = DS.getMessageHandler();
         sfrs = DS.getSFRSet();
@@ -47,7 +57,7 @@ public class Uart implements Peripheral {
         sfrInterrupt = sfrs.getSFR("IFS1");
         sfrSTA = sfrs.getSFR("U2STA");
         sfrTX = sfrs.getSFR("U2TXREG");
-
+        
         // remove UART2
         PeripheralSet periphSet = DS.getPeripheralSet();
         Peripheral uartPeriph = periphSet.getPeripheral("UART2");
@@ -55,7 +65,8 @@ public class Uart implements Peripheral {
             uartPeriph.deInit();
             periphSet.removePeripheral(uartPeriph);
         }
-
+        
+        messageHandler.outputMessage("External Peripheral Initialized: UART");
         // add peripheral to list and return true
         DS.getPeripheralSet().addToActivePeripheralList(this);
         return true;
@@ -90,29 +101,16 @@ public class Uart implements Peripheral {
     public void update() {
         if (cycleCount == 1000000) {
             sfrTX.addObserver(sfrObs);
-
-                // prepare pipes (need to catch exceptions)
-            try {
-                // Runtime.getRuntime().exec("mkfifo " + reqPipePath); // Create pipes if they don't exist
-                // Runtime.getRuntime().exec("mkfifo " + resPipePath);
-                messageHandler.outputMessage("I am trying to init! I promise!");
-                requestStream = new FileOutputStream(in);
-                responseStream = new FileInputStream(out);
-            } catch (Exception e) {
-                messageHandler.outputMessage("Yikes. Hit an error: " + e.toString());
-                messageHandler.outputError(e);
-            }
-            try {
-                if (responseStream.available() != 0) {
-                    chars.add((char) responseStream.read());
-                }
-            } catch (Exception e) {
-                messageHandler.outputMessage("Yikes. Hit an error: " + e.toString());
-                messageHandler.outputError(e);
-            }
         }
-        
         if (cycleCount % 1000000 == 0) {
+            try {
+                resFIFO.openReader();
+                resFIFO.read(resBuff);
+                chars.add((char) resBuff[0]);
+            } catch (IPCException e) {
+                messageHandler.outputError(e);
+            }
+            messageHandler.outputMessage(cycleCount + "");
             if (!chars.isEmpty()) {
                 if (sfrSTA.getFieldValue("UTXEN") == 1) {
                     // messageHandler.outputMessage(chars.peek() + "");
@@ -133,11 +131,12 @@ public class Uart implements Peripheral {
 
     public static void output() {
         char currentChar = (char) sfrTX.read();
+        reqBuff[0] = (byte) currentChar;
         messageHandler.outputMessage(currentChar + "");
         try {
-            requestStream.write((byte) currentChar);
-        } catch (Exception e) {
-            messageHandler.outputMessage("Yikes, hit an exception in output");
+            reqFIFO.openWriter();
+            reqFIFO.write(reqBuff);
+        } catch (IPCException e) {
             messageHandler.outputError(e);
         }
     }
