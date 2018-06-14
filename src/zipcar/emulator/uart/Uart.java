@@ -1,8 +1,5 @@
 package zipcar.emulator.uart;
 
-import com.lts.ipc.fifo.FIFO;
-import com.lts.ipc.fifo.FIFOImpl;
-import com.lts.ipc.IPCException;
 import com.microchip.mplab.mdbcore.simulator.Peripheral;
 import com.microchip.mplab.mdbcore.simulator.SFR;
 import com.microchip.mplab.mdbcore.simulator.SFRSet;
@@ -11,9 +8,6 @@ import com.microchip.mplab.mdbcore.simulator.MessageHandler;
 import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataStore;
 import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
 import com.microchip.mplab.mdbcore.simulator.SFR.SFRObserver;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileInputStream;
 import java.util.LinkedList;
 import java.io.RandomAccessFile;
 import java.io.FileNotFoundException;
