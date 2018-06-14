@@ -10,6 +10,8 @@ import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataSto
 import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
 import com.microchip.mplab.mdbcore.simulator.SFR.SFRObserver;
 import java.util.LinkedList;
+import java.io.RandomAccessFile;
+import java.io.FileNotFoundException;
 import org.openide.util.lookup.ServiceProvider;
 
 @ServiceProvider(path=Peripheral.REGISTRATION_PATH, service=Peripheral.class)
@@ -27,6 +29,9 @@ public class Uart implements Peripheral {
     int cycleCount = 0;
     LinkedList<Character> chars = new LinkedList();
     MySFRObserver sfrObs = new MySFRObserver();
+    static RandomAccessFile request = null;
+    static RandomAccessFile response = null;
+    
     
     @Override
     public boolean init(SimulatorDataStore DS) {
@@ -78,18 +83,28 @@ public class Uart implements Peripheral {
     
     @Override
     public void update() {
+        if (cycleCount == 1000000) {
+            try {
+                request = new RandomAccessFile("/Users/cgoldader/pic-brain/LMBrain.X/sim/req", "rw");
+                response = new RandomAccessFile("/Users/cgoldader/pic-brain/LMBrain.X/sim/res", "rw");
+            } catch (FileNotFoundException e) {
+                messageHandler.outputMessage("Exception bois: " + e);
+            }
+        }
         if (cycleCount % 1000000 == 0) {
+            try {
+                chars.add(response.readChar()); // Doesn't currently work!!!!!!!
+            } catch (Exception e) {
+                messageHandler.outputMessage("Exception bois: " + e);
+            }
             sfrTX.addObserver(sfrObs);
             if (!chars.isEmpty()) {
                 if (sfrSTA.getFieldValue("UTXEN") == 1) {
                     // messageHandler.outputMessage(chars.peek() + "");
                     sfrBuff.privilegedWrite(chars.pop());   // Inject the next char
                     sfrInterrupt.privilegedSetFieldValue("U2RXIF", 1); // Trigger the interrupt
-                    // sfrSTA.privilegedSetFieldValue("URXDA", 1); // Trigger the STA
                 }
-            } else {
-                setString("Hi\n");
-            }
+            } 
         }
         cycleCount++;
     }
@@ -101,7 +116,12 @@ public class Uart implements Peripheral {
     }
     
     public static void output() {
-        messageHandler.outputMessage((char) sfrTX.read() + "");
+        try {
+            request.write((byte) sfrTX.read()); 
+        } catch (Exception e) {
+            messageHandler.outputMessage(e + "");
+        }
+        // messageHandler.outputMessage((char) sfrTX.read() + "");
     }
 }
 
