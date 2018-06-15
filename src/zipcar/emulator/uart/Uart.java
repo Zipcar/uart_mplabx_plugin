@@ -8,6 +8,8 @@ import com.microchip.mplab.mdbcore.simulator.MessageHandler;
 import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataStore;
 import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
 import com.microchip.mplab.mdbcore.simulator.SFR.SFRObserver;
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.util.LinkedList;
 import java.io.RandomAccessFile;
 import java.io.FileInputStream;
@@ -19,21 +21,22 @@ import org.openide.util.lookup.ServiceProvider;
 @ServiceProvider(path = Peripheral.REGISTRATION_PATH, service = Peripheral.class)
 public class Uart implements Peripheral {
 
-    MessageHandler messageHandler = null;
-    SFR sfrBuff = null;
-    SFR sfrInterrupt = null;
-    SFR sfrSTA = null;
-    SFR sfrTX = null;
+    MessageHandler messageHandler;
+    SFR sfrBuff;
+    SFR sfrInterrupt;
+    SFR sfrSTA;
+    SFR sfrTX;
     int updateCounter = 0;
     SFRSet sfrs;
     SCL scl;
     boolean notInitialized = true;
     int cycleCount = 0;
     LinkedList<Character> chars = new LinkedList<Character>();
-    FileOutputStream request = null;
-    FileInputStream response = null;
-    static Uart instance = null;
-    
+    FileOutputStream reqStream;
+    FileInputStream resStream;
+    static Uart instance;
+    BufferedOutputStream request;
+    BufferedInputStream response;
     
     @Override
     public boolean init(SimulatorDataStore DS) {
@@ -55,8 +58,11 @@ public class Uart implements Peripheral {
 
         // setup pipes
         try {
-            request = new FileOutputStream("/Users/cgoldader/pic-brain/LMBrain.X/sim/req");
-            response = new FileInputStream("/Users/cgoldader/pic-brain/LMBrain.X/sim/res");
+            reqStream = new FileOutputStream("/Users/cgoldader/pic-brain/LMBrain.X/sim/req");
+            resStream = new FileInputStream("/Users/cgoldader/pic-brain/LMBrain.X/sim/res");
+            BufferedOutputStream request = new BufferedOutputStream(reqStream);
+            BufferedInputStream response = new BufferedInputStream(resStream);
+            
         } catch (FileNotFoundException e) {
             messageHandler.outputMessage("Exception in update: " + e);
             return false;
