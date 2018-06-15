@@ -10,31 +10,33 @@ import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
 import com.microchip.mplab.mdbcore.simulator.SFR.SFRObserver;
 import java.util.LinkedList;
 import java.io.RandomAccessFile;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import org.openide.util.lookup.ServiceProvider;
 
 @ServiceProvider(path = Peripheral.REGISTRATION_PATH, service = Peripheral.class)
 public class Uart implements Peripheral {
 
-    static MessageHandler messageHandler = null;
-    static SFR sfrBuff = null;
-    static SFR sfrInterrupt = null;
-    static SFR sfrSTA = null;
-    static SFR sfrTX = null;
+    MessageHandler messageHandler = null;
+    SFR sfrBuff = null;
+    SFR sfrInterrupt = null;
+    SFR sfrSTA = null;
+    SFR sfrTX = null;
     int updateCounter = 0;
-    static SFRSet sfrs;
+    SFRSet sfrs;
     SCL scl;
     boolean notInitialized = true;
     int cycleCount = 0;
     LinkedList<Character> chars = new LinkedList<Character>();
-    MySFRObserver sfrObs = new MySFRObserver();
-    static RandomAccessFile request = null;
-    static RandomAccessFile response = null;
+    FileOutputStream request = null;
+    FileInputStream response = null;
+    static Uart instance = null;
     
     
     @Override
     public boolean init(SimulatorDataStore DS) {
-        
         // initialize instance variables
         messageHandler = DS.getMessageHandler();
         sfrs = DS.getSFRSet();
@@ -50,8 +52,23 @@ public class Uart implements Peripheral {
             uartPeriph.deInit();
             periphSet.removePeripheral(uartPeriph);
         }
+
+        // setup pipes
+        try {
+            request = new FileOutputStream("/Users/cgoldader/pic-brain/LMBrain.X/sim/req");
+            response = new FileInputStream("/Users/cgoldader/pic-brain/LMBrain.X/sim/res");
+        } catch (FileNotFoundException e) {
+            messageHandler.outputMessage("Exception in update: " + e);
+            return false;
+        }
+        
+        // add observers
+        UartObserver obs = new UartObserver();
+        sfrTX.addObserver(obs);
         
         messageHandler.outputMessage("External Peripheral Initialized: UART");
+        
+        instance = this;
         // add peripheral to list and return true
         DS.getPeripheralSet().addToActivePeripheralList(this);
         return true;
@@ -84,28 +101,23 @@ public class Uart implements Peripheral {
 
     @Override
     public void update() {
-        if (cycleCount == 1000000) {
-            try {
-                request = new RandomAccessFile("/Users/cgoldader/pic-brain/LMBrain.X/sim/req", "rw");
-                response = new RandomAccessFile("/Users/cgoldader/pic-brain/LMBrain.X/sim/res", "rw");
-            } catch (FileNotFoundException e) {
-                messageHandler.outputMessage("Exception bois: " + e);
-            }
-        }
         if (cycleCount % 1000000 == 0) {
             try {
-                chars.add(response.readChar()); // Doesn't currently work!!!!!!!
-            } catch (Exception e) {
-                messageHandler.outputMessage("Exception bois: " + e);
+                if (response.available() != 0) {
+                    messageHandler.outputMessage("available bytes: " + response.available());
+                    chars.add((char) response.read()); // Doesn't currently work!!!!!!!
+                }
+            } catch (IOException e) {
+                messageHandler.outputMessage("Exception reading character from res " + e);
+                return;
             }
-            sfrTX.addObserver(sfrObs);
             if (!chars.isEmpty()) {
                 if (sfrSTA.getFieldValue("UTXEN") == 1) {
                     // messageHandler.outputMessage(chars.peek() + "");
                     sfrBuff.privilegedWrite(chars.pop());   // Inject the next char
                     sfrInterrupt.privilegedSetFieldValue("U2RXIF", 1); // Trigger the interrupt
                 }
-            } 
+            }
         }
         cycleCount++;
     }
@@ -116,22 +128,17 @@ public class Uart implements Peripheral {
         }
     }
 
-    public static void output() {
+    public void output() {
         try {
+            // messageHandler.outputMessage("Should be outputting " + sfrTX.read());
             request.write((byte) sfrTX.read()); 
         } catch (Exception e) {
-            messageHandler.outputMessage(e + "");
+            messageHandler.outputMessage("failed to write request byte " + e);
         }
         // messageHandler.outputMessage((char) sfrTX.read() + "");
     }
-}
-
-class MySFRObserver implements SFRObserver {
-
-    @Override
-    public void update(SFR generator, SFREvent event, SFREventSource source) {
-        if (event == SFREvent.SFR_CHANGED) {
-            Uart.output();
-        }
+    
+    public static Uart get() {
+        return instance;
     }
 }
