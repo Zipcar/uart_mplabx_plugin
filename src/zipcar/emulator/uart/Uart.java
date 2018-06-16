@@ -7,11 +7,7 @@ import com.microchip.mplab.mdbcore.simulator.scl.SCL;
 import com.microchip.mplab.mdbcore.simulator.MessageHandler;
 import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataStore;
 import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
-import com.microchip.mplab.mdbcore.simulator.SFR.SFRObserver;
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.util.LinkedList;
-import java.io.RandomAccessFile;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileNotFoundException;
@@ -32,11 +28,11 @@ public class Uart implements Peripheral {
     boolean notInitialized = true;
     int cycleCount = 0;
     LinkedList<Character> chars = new LinkedList<Character>();
-    FileOutputStream reqStream;
-    FileInputStream resStream;
+    FileOutputStream request;
+    FileInputStream response;
     static Uart instance;
-    BufferedOutputStream request;
-    BufferedInputStream response;
+    // BufferedOutputStream request;
+    // BufferedInputStream response;
     
     @Override
     public boolean init(SimulatorDataStore DS) {
@@ -58,10 +54,10 @@ public class Uart implements Peripheral {
 
         // setup pipes
         try {
-            reqStream = new FileOutputStream("/Users/cgoldader/pic-brain/LMBrain.X/sim/req");
-            resStream = new FileInputStream("/Users/cgoldader/pic-brain/LMBrain.X/sim/res");
-            BufferedOutputStream request = new BufferedOutputStream(reqStream);
-            BufferedInputStream response = new BufferedInputStream(resStream);
+            request = new FileOutputStream("/Users/cgoldader/pic-brain/LMBrain.X/sim/req");
+            response = new FileInputStream("/Users/cgoldader/pic-brain/LMBrain.X/sim/res");
+            // request = new BufferedOutputStream(reqStream);
+            // response = new BufferedInputStream(resStream);
             
         } catch (FileNotFoundException e) {
             messageHandler.outputMessage("Exception in update: " + e);
@@ -107,7 +103,7 @@ public class Uart implements Peripheral {
 
     @Override
     public void update() {
-        if (cycleCount % 1000000 == 0) {
+        if (cycleCount % 267 == 0) {
             try {
                 if (response.available() != 0) {
                     messageHandler.outputMessage("available bytes: " + response.available());
