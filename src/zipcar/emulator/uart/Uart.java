@@ -22,8 +22,8 @@ public class Uart implements Peripheral {
     final String UART_INTERRUPT = "IFS1"; // Respective UART Interrupt SFR
     final String UART_STA = "U2STA"; // Respective UART STA SFR
     final String UART_TX = "U2TXREG"; // Respective UART TX SFR
-    final String REQUEST_FILE = "/Users/cgoldader/pic-brain/LMBrain.X/sim/req"; // Request File Path (eg: "~/uartfolder/req"
-    final String RESPONSE_FILE = "/Users/cgoldader/pic-brain/LMBrain.X/sim/res"; // Response File Path (eg: "~/uartfolder/res"
+    final String REQUEST_FILE = ""; // Request File Path (eg: "~/uartfolder/req"
+    final String RESPONSE_FILE = ""; // Response File Path (eg: "~/uartfolder/res"
     
     static Uart instance;
     MessageHandler messageHandler;
