@@ -22,6 +22,8 @@ public class Uart implements Peripheral {
     final String UART_INTERRUPT = "IFS1"; // Respective UART Interrupt SFR
     final String UART_STA = "U2STA"; // Respective UART STA SFR
     final String UART_TX = "U2TXREG"; // Respective UART TX SFR
+    final String REQUEST_FILE = "/Users/cgoldader/pic-brain/LMBrain.X/sim/req"; // Request File Path (eg: "~/uartfolder/req"
+    final String RESPONSE_FILE = "/Users/cgoldader/pic-brain/LMBrain.X/sim/res"; // Response File Path (eg: "~/uartfolder/res"
     
     static Uart instance;
     MessageHandler messageHandler;
@@ -51,7 +53,7 @@ public class Uart implements Peripheral {
         
         // Remove default UART2
         PeripheralSet periphSet = DS.getPeripheralSet();
-        Peripheral uartPeriph = periphSet.getPeripheral("UART2");
+        Peripheral uartPeriph = periphSet.getPeripheral(UART_NUM);
         if (uartPeriph != null) {
             uartPeriph.deInit();
             periphSet.removePeripheral(uartPeriph);
@@ -59,9 +61,8 @@ public class Uart implements Peripheral {
 
         // Setup pipes
         try {
-            request = new FileOutputStream("/Users/cgoldader/pic-brain/LMBrain.X/sim/req");
-            response = new FileInputStream("/Users/cgoldader/pic-brain/LMBrain.X/sim/res");
-            
+            request = new FileOutputStream(REQUEST_FILE);
+            response = new FileInputStream(RESPONSE_FILE);
         } catch (FileNotFoundException e) {
             messageHandler.outputMessage("Exception in init: " + e);
             return false;
