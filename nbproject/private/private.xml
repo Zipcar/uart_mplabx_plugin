@@ -4,6 +4,7 @@
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
             <file>file:/Users/cgoldader/NetBeansProjects/uart_mplabx_plugin/src/zipcar/emulator/uart/Uart.java</file>
+            <file>file:/Users/cgoldader/NetBeansProjects/uart_mplabx_plugin/src/zipcar/emulator/uart/UartObserver.java</file>
         </group>
     </open-files>
 </project-private>
