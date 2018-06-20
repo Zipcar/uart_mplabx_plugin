@@ -52,7 +52,7 @@ public class Uart implements Peripheral {
         
         // Initialize instance variables
         try {
-            FileInputStream conf = new FileInputStream(new File("/Applications/microchip/mplabx/v4.20/mplab_platform/bin/config.yml"));
+            FileInputStream conf = new FileInputStream(new File("config.yml"));
             Map config = (Map) yaml.load(conf);
             UART_NUM = config.get("uartNum").toString();
             UART_RX = config.get("uartRX").toString();
@@ -132,7 +132,7 @@ public class Uart implements Peripheral {
 
     @Override
     public void update() {
-        if (cycleCount % (267*2) == 0) {
+        if (cycleCount % (267) == 0) {
             try {
                 if (response.available() != 0) { // If there are unread bytes, read them and add the chars
                     messageHandler.outputMessage("Available bytes: " + response.available());
