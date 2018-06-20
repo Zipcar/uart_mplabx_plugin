@@ -41,8 +41,8 @@
             </module-dependencies>
             <public-packages/>
             <class-path-extension>
-                <runtime-relative-path>ext/clipc.jar</runtime-relative-path>
-                <binary-origin>release/modules/ext/clipc.jar</binary-origin>
+                <runtime-relative-path>ext/snakeyaml-1.9.jar</runtime-relative-path>
+                <binary-origin>release/modules/ext/snakeyaml-1.9.jar</binary-origin>
             </class-path-extension>
         </data>
     </configuration>

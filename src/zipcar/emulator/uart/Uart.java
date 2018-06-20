@@ -7,23 +7,26 @@ import com.microchip.mplab.mdbcore.simulator.scl.SCL;
 import com.microchip.mplab.mdbcore.simulator.MessageHandler;
 import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataStore;
 import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
+import java.io.File;
 import java.util.LinkedList;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import org.openide.util.lookup.ServiceProvider;
+import java.util.Map;
+import org.yaml.snakeyaml.Yaml;
 
 @ServiceProvider(path = Peripheral.REGISTRATION_PATH, service = Peripheral.class)
 public class Uart implements Peripheral {
-
-    final String UART_NUM = "UART2"; // UART Name (eg: UART1, UART2, etc...)
-    final String UART_RX = "U2RXREG"; // Respective UART RX SFR
-    final String UART_INTERRUPT = "IFS1"; // Respective UART Interrupt SFR
-    final String UART_STA = "U2STA"; // Respective UART STA SFR
-    final String UART_TX = "U2TXREG"; // Respective UART TX SFR
-    final String REQUEST_FILE = "/Users/cgoldader/pic-brain/LMBrain.X/sim/req"; // Request File Path (eg: "~/uartfolder/req"
-    final String RESPONSE_FILE = "/Users/cgoldader/pic-brain/LMBrain.X/sim/res"; // Response File Path (eg: "~/uartfolder/res"
+    
+    String UART_NUM; // UART Name (eg: UART1, UART2, etc...)
+    String UART_RX;// Respective UART RX SFR
+    String UART_INTERRUPT; // Respective UART Interrupt SFR
+    String UART_STA; // Respective UART STA SFR
+    String UART_TX; // Respective UART TX SFR
+    String REQUEST_FILE; // Request File Path (eg: "~/uartfolder/req"
+    String RESPONSE_FILE; // Response File Path (eg: "~/uartfolder/res"
     
     static Uart instance;
     MessageHandler messageHandler;
@@ -39,12 +42,29 @@ public class Uart implements Peripheral {
     LinkedList<Character> chars = new LinkedList<Character>();
     FileOutputStream request;
     FileInputStream response;
+    Yaml yaml = new Yaml();
     
     @Override
     public boolean init(SimulatorDataStore DS) {
         
-        // Initialize instance variables
+        // Initialize messageHandler
         messageHandler = DS.getMessageHandler();
+        
+        // Initialize instance variables
+        try {
+            FileInputStream conf = new FileInputStream(new File("/Applications/microchip/mplabx/v4.20/mplab_platform/bin/config.yml"));
+            Map config = (Map) yaml.load(conf);
+            UART_NUM = config.get("uartNum").toString();
+            UART_RX = config.get("uartRX").toString();
+            UART_INTERRUPT = config.get("uartInterrupt").toString();
+            UART_STA = config.get("uartSTA").toString();
+            UART_TX = config.get("uartTX").toString();
+            REQUEST_FILE = config.get("requestFile").toString();
+            RESPONSE_FILE = config.get("responseFile").toString();
+        } catch (Exception e) {
+            messageHandler.outputError(e);
+            // return false;
+        }
         sfrs = DS.getSFRSet();
         sfrRX = sfrs.getSFR(UART_RX);
         sfrInterrupt = sfrs.getSFR(UART_INTERRUPT);
@@ -112,7 +132,7 @@ public class Uart implements Peripheral {
 
     @Override
     public void update() {
-        if (cycleCount % 267 == 0) {
+        if (cycleCount % (267*2) == 0) {
             try {
                 if (response.available() != 0) { // If there are unread bytes, read them and add the chars
                     messageHandler.outputMessage("Available bytes: " + response.available());

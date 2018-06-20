@@ -1,0 +1,9 @@
+## Below are example values, please modify to match your desired UART
+---
+uartNum: UART2 ## UART Name (eg: UART1, UART2, etc...)
+uartRX: U2RXREG ## Respective UART RX SFR
+uartInterrupt: IFS1 ## Respective UART Interrupt SFR
+uartSTA: U2STA ## Respective UART STA SFR
+uartTX: U2TXREG ## Respective UART TX SFR
+requestFile: ~/uartfolder/req ## Request File Path (eg: "~/uartfolder/req"
+responseFile: ~/uartfolder/res ## Response File Path (eg: "~/uartfolder/res"
