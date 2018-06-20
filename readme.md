@@ -8,7 +8,7 @@ The majority of the code is under src/Uart.java, but if you wish to implement yo
 SFRObservers, then you'll want to look under src/UartObserver.java
 
 ## Setup & Build
-### Pre-requisits
+### Prerequisites
 1. MPLab X v4.20
 2. MPLab X SDK
 3. Netbeans (any recent version should work, submit an issue if it doesn't)
@@ -18,8 +18,8 @@ SFRObservers, then you'll want to look under src/UartObserver.java
 1. Clone repo `git clone https://github.com/Zipcar/uart_mplabx_plugin.git`
 2. Modify config in `src/config.yml` to meet your desired values.
 3. Copy `config.yml` from the `src` directory of `uart_mplabx_plugin` to your MPLab X bin folder.
-  MacOS: `/Applications/microchip/mplabx/vX.XX/mplab_platform/bin`
-  Windows: `C:\Program Files (x86)\Microchip\MPLABX\vX.XX\mplab_ide\bin`
+    * MacOS: `/Applications/microchip/mplabx/vX.XX/mplab_platform/bin`
+    * Windows: `C:\Program Files (x86)\Microchip\MPLABX\vX.XX\mplab_ide\bin`
 4. Open Netbeans
 5. `File -> Open Project` Open the `uart_mplabx_plugin` project folder
 6. Open `uart_mplabx_plugin -> Source Packages -> zipcar.emulator.uart -> Uart.java` from the projects tab
