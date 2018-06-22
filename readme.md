@@ -23,8 +23,7 @@ SFRObservers, then you'll want to look under src/UartObserver.java
 4. Open Netbeans
 5. `File -> Open Project` Open the `uart_mplabx_plugin` project folder
 6. Open `uart_mplabx_plugin -> Source Packages -> zipcar.emulator.uart -> Uart.java` from the projects tab
-7. Change the Strings at the top of the class to your respective register values & file paths
-8. Right click `uart_mplabx_plugin` and click `Create NBM`
+7. Right click `uart_mplabx_plugin` and click `Create NBM`
 
 ### Install
 1. Open MPLab X
