@@ -132,7 +132,7 @@ public class Uart implements Peripheral {
 
     @Override
     public void update() {
-        if (cycleCount % (267) == 0) {
+        if (cycleCount % (1068) == 0) {
             try {
                 if (response.available() != 0) { // If there are unread bytes, read them and add the chars
                     messageHandler.outputMessage("Available bytes: " + response.available());
