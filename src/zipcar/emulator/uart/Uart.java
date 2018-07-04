@@ -80,14 +80,23 @@ public class Uart implements Peripheral {
         }
 
         // Setup pipes
-        try {
+        /* try {
             request = new FileOutputStream(REQUEST_FILE);
             response = new FileInputStream(RESPONSE_FILE);
         } catch (FileNotFoundException e) {
             messageHandler.outputMessage("Exception in init: " + e);
             return false;
-        }
+        } */
         
+
+        try {
+            Socket reqSocket = new Socket("localhost", 5556);
+            request = new BufferedWriter(new OutputStreamWriter(reqSocket.getOutputStream()));
+            response = new BufferedInputStream(reqSocket.getInputStream());
+        } catch (Exception e) {
+            messageHandler.outputError(e);
+        } 
+
         // Add observers
         UartObserver obs = new UartObserver();
         sfrTX.addObserver(obs);
