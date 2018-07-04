@@ -7,12 +7,16 @@ import com.microchip.mplab.mdbcore.simulator.scl.SCL;
 import com.microchip.mplab.mdbcore.simulator.MessageHandler;
 import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataStore;
 import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
+import java.io.BufferedInputStream;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.util.LinkedList;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.net.Socket;
 import org.openide.util.lookup.ServiceProvider;
 import java.util.Map;
 import org.yaml.snakeyaml.Yaml;
@@ -39,9 +43,9 @@ public class Uart implements Peripheral {
     int cycleCount = 0;
     SCL scl;
     boolean notInitialized = true;
-    LinkedList<Character> chars = new LinkedList<Character>();
-    FileOutputStream request;
-    FileInputStream response;
+    LinkedList<Byte> chars = new LinkedList<Byte>();
+    BufferedWriter request;
+    BufferedInputStream response;
     Yaml yaml = new Yaml();
     
     @Override
@@ -141,11 +145,11 @@ public class Uart implements Peripheral {
 
     @Override
     public void update() {
-        if (cycleCount % (4000) == 0) {
+        if (cycleCount % (267) == 0) {
             try {
-                if (response.available() != 0) { // If there are unread bytes, read them and add the chars
-                    messageHandler.outputMessage("Available bytes: " + response.available());
-                    chars.add((char) response.read());
+                if (response.available() > 0) {
+                    messageHandler.outputMessage(response.available() + "");
+                    chars.add((byte) response.read());
                 }
             } catch (IOException e) {
                 messageHandler.outputMessage("Exception reading character from res " + e);
@@ -153,6 +157,7 @@ public class Uart implements Peripheral {
             }
             if (!chars.isEmpty()) { // Inject anything in chars
                 if (sfrSTA.getFieldValue("UTXEN") == 1) { // If STA is ready to receive !! IMPORTANT
+                    messageHandler.outputMessage("Injecting: " + chars.peek());
                     // messageHandler.outputMessage(chars.peek() + ""); // Returns the next char which will be injected
                     sfrRX.privilegedWrite(chars.pop()); // Inject the next char
                     sfrInterrupt.privilegedSetFieldValue("U2RXIF", 1); // Trigger the interrupt
@@ -165,14 +170,16 @@ public class Uart implements Peripheral {
     // Debugging function for manually adding a string to chars
     public void setString(String str) {
         for (int i = 0; i < str.length(); i++) {
-            chars.add(str.charAt(i));
+            chars.add((byte) str.charAt(i));
         }
     }
     
     // Try to write bytes to the request file
     public void output() {
         try {
+            messageHandler.outputMessage("writing to lmpp");
             request.write((byte) sfrTX.read()); 
+            request.flush();
         } catch (Exception e) {
             messageHandler.outputMessage("failed to write request byte " + e);
         }
