@@ -179,7 +179,6 @@ public class Uart implements Peripheral {
     public void output() {
         try {
             byte b = (byte) sfrTX.read();
-            messageHandler.outputMessage(String.format("Writing: 0x%02X" + b));
             request.write(b); 
             request.flush();
         } catch (Exception e) {
