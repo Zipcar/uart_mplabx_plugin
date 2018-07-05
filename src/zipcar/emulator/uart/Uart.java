@@ -8,6 +8,7 @@ import com.microchip.mplab.mdbcore.simulator.MessageHandler;
 import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataStore;
 import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
 import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.util.LinkedList;
@@ -44,7 +45,7 @@ public class Uart implements Peripheral {
     SCL scl;
     boolean notInitialized = true;
     LinkedList<Byte> chars = new LinkedList<Byte>();
-    BufferedWriter request;
+    BufferedOutputStream request;
     BufferedInputStream response;
     Yaml yaml = new Yaml();
     
@@ -95,7 +96,7 @@ public class Uart implements Peripheral {
 
         try {
             Socket reqSocket = new Socket("localhost", 5556);
-            request = new BufferedWriter(new OutputStreamWriter(reqSocket.getOutputStream()));
+            request = new BufferedOutputStream(reqSocket.getOutputStream());
             response = new BufferedInputStream(reqSocket.getInputStream());
         } catch (Exception e) {
             messageHandler.outputError(e);
@@ -177,11 +178,12 @@ public class Uart implements Peripheral {
     // Try to write bytes to the request file
     public void output() {
         try {
-            messageHandler.outputMessage("writing to lmpp");
-            request.write((byte) sfrTX.read()); 
+            byte b = (byte) sfrTX.read();
+            messageHandler.outputMessage(String.format("Writing: 0x%02X" + b));
+            request.write(b); 
             request.flush();
         } catch (Exception e) {
-            messageHandler.outputMessage("failed to write request byte " + e);
+            messageHandler.outputMessage("Failed to write request byte " + e);
         }
     }
     
