@@ -115,6 +115,7 @@ public class Uart implements Peripheral {
         }
     }
 
+    // Unimplemented method of interface. Most PeripheralObserver applications that'd be of use are covered by deInit().
     @Override
     public void addObserver(PeripheralObserver observer) {
 
@@ -125,6 +126,7 @@ public class Uart implements Peripheral {
         return UART_NUM + "_SIM";
     }
 
+    // Unimplemented method of interface. Most PeripheralObserver applications that'd be of use are covered by deInit().
     @Override
     public void removeObserver(PeripheralObserver observer) {
 
@@ -149,12 +151,12 @@ public class Uart implements Peripheral {
             messageHandler.outputMessage("Exception reading character from res " + e);
             return;
         }
-        if (!chars.isEmpty()) { // Inject anything in chars
+        if (!chars.isEmpty()) {
             if cycleCount == 267 {
-                if (sfrSTA.getFieldValue("UTXEN") == 1) { // If STA is ready to receive !! IMPORTANT
+                if (sfrSTA.getFieldValue("UTXEN") == 1) {
                     messageHandler.outputMessage("Injecting: " + chars.peek());
-                    sfrRX.privilegedWrite(chars.pop()); // Inject the next char
-                    sfrInterrupt.privilegedSetFieldValue("U2RXIF", 1); // Trigger the interrupt
+                    sfrRX.privilegedWrite(chars.pop());
+                    sfrInterrupt.privilegedSetFieldValue("U2RXIF", 1);
                 }
                 cycleCount = 0;
             } else {
@@ -177,7 +179,7 @@ public class Uart implements Peripheral {
             request.write(b); 
             request.flush();
         } catch (IOException e) {
-            messageHandler.outputMessage("Failed to write request byte... Attempting to reopen sockets. " + e);
+            messageHandler.outputMessage("Failed to write request byte... Attempting to reopen sockets.\n" + e);
             openSockets();
         }
     }
