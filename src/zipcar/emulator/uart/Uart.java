@@ -60,7 +60,7 @@ public class Uart implements Peripheral {
         // Initialize instance variables
         try {
             conf = new FileInputStream(new File("config.yml"));
-            config = (Map) yaml.load(conf);]
+            config = (Map) yaml.load(conf);
             UART_NUM = config.get("uartNum").toString();
             UART_RX = config.get("uartRX").toString();
             UART_INTERRUPT = config.get("uartInterrupt").toString();
@@ -96,7 +96,9 @@ public class Uart implements Peripheral {
             periphSet.removePeripheral(uartPeriph);
         }
 
-        openSockets();
+        if (!openSockets()) {
+            return false;
+        }
 
         sfrTX.addObserver(sfrTXObserver);
         
@@ -152,7 +154,7 @@ public class Uart implements Peripheral {
             return;
         }
         if (!chars.isEmpty()) {
-            if cycleCount == 267 {
+            if (cycleCount == 267) {
                 if (sfrSTA.getFieldValue("UTXEN") == 1) {
                     messageHandler.outputMessage("Injecting: " + chars.peek());
                     sfrRX.privilegedWrite(chars.pop());
@@ -184,7 +186,7 @@ public class Uart implements Peripheral {
         }
     }
 
-    public void openSockets() {
+    public boolean openSockets() {
         try {
             Socket reqSocket = new Socket("localhost", 5556);
         } catch (IOException e) {
