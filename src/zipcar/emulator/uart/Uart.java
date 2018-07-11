@@ -30,12 +30,13 @@ public class Uart implements Peripheral {
     String UART_STA; // Respective UART STA SFR
     String UART_TX; // Respective UART TX SFR
     
+    Socket reqSocket;
     MessageHandler messageHandler;
     SFR sfrRX;
     SFR sfrInterrupt;
     SFR sfrSTA;
     SFR sfrTX;
-    SFRObserver sfrTXObserver;
+    UartObserver sfrTXObserver;
     int cycleCount = 0;
     boolean notInitialized = true;
     LinkedList<Byte> chars;
@@ -71,7 +72,7 @@ public class Uart implements Peripheral {
             messageHandler.outputMessage("Are you sure you placed config.yml in the correct folder?");
             return false;
         } catch (SecurityException e) {
-            messageHandler.outputErorr(e);
+            messageHandler.outputMessage(e.toString());
             return false;
         } catch (NullPointerException e) {
             messageHandler.outputError(e);
@@ -188,7 +189,7 @@ public class Uart implements Peripheral {
 
     public boolean openSockets() {
         try {
-            Socket reqSocket = new Socket("localhost", 5556);
+            reqSocket = new Socket("localhost", 5556);
         } catch (IOException e) {
             messageHandler.outputError(e);
             messageHandler.outputMessage("Failed to open socket. Is there an external listener running?");
@@ -204,13 +205,14 @@ public class Uart implements Peripheral {
             messageHandler.outputError(e);
             return false;
         }
-
         try {
             request = new BufferedOutputStream(reqSocket.getOutputStream());
             response = new BufferedInputStream(reqSocket.getInputStream());
         } catch (IOException e) {
             messageHandler.outputError(e);
             messageHandler.outputMessage("Failed to open Req/Res streams.");
+            return false;
         }
+        return true;
     }
 }
