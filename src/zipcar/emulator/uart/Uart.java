@@ -8,14 +8,11 @@ import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataSto
 import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.util.LinkedList;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.net.Socket;
 import org.openide.util.lookup.ServiceProvider;
 import java.util.Map;
