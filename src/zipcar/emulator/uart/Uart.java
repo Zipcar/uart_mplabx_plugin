@@ -3,20 +3,16 @@ package zipcar.emulator.uart;
 import com.microchip.mplab.mdbcore.simulator.Peripheral;
 import com.microchip.mplab.mdbcore.simulator.SFR;
 import com.microchip.mplab.mdbcore.simulator.SFRSet;
-import com.microchip.mplab.mdbcore.simulator.scl.SCL;
 import com.microchip.mplab.mdbcore.simulator.MessageHandler;
 import com.microchip.mplab.mdbcore.simulator.SimulatorDataStore.SimulatorDataStore;
 import com.microchip.mplab.mdbcore.simulator.PeripheralSet;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.util.LinkedList;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
 import java.net.Socket;
 import org.openide.util.lookup.ServiceProvider;
 import java.util.Map;
@@ -26,50 +22,64 @@ import org.yaml.snakeyaml.Yaml;
 public class Uart implements Peripheral {
     
     String UART_NUM; // UART Name (eg: UART1, UART2, etc...)
-    String UART_RX;// Respective UART RX SFR
+    String UART_RX; // Respective UART RX SFR
     String UART_INTERRUPT; // Respective UART Interrupt SFR
     String UART_STA; // Respective UART STA SFR
     String UART_TX; // Respective UART TX SFR
-    String REQUEST_FILE; // Request File Path (eg: "~/uartfolder/req"
-    String RESPONSE_FILE; // Response File Path (eg: "~/uartfolder/res"
     
-    static Uart instance;
+    Socket reqSocket;
     MessageHandler messageHandler;
     SFR sfrRX;
     SFR sfrInterrupt;
     SFR sfrSTA;
     SFR sfrTX;
-    SFRSet sfrs;
-    int updateCounter = 0;
+    UartObserver sfrTXObserver;
     int cycleCount = 0;
-    SCL scl;
     boolean notInitialized = true;
-    LinkedList<Byte> chars = new LinkedList<Byte>();
+    LinkedList<Byte> chars;
+    FileInputStream conf;
+    Map config;
     BufferedOutputStream request;
     BufferedInputStream response;
-    Yaml yaml = new Yaml();
+    Yaml yaml;
     
+    public Uart() {
+        sfrTXObserver = new UartObserver();
+        chars = new LinkedList<Byte>();
+        yaml = new Yaml();
+    }
+
     @Override
     public boolean init(SimulatorDataStore DS) {
-        
-        // Initialize messageHandler
+        SFRSet sfrs;
+
         messageHandler = DS.getMessageHandler();
         
         // Initialize instance variables
         try {
-            FileInputStream conf = new FileInputStream(new File("config.yml"));
-            Map config = (Map) yaml.load(conf);
+            conf = new FileInputStream(new File("config.yml"));
+            config = (Map) yaml.load(conf);
             UART_NUM = config.get("uartNum").toString();
             UART_RX = config.get("uartRX").toString();
             UART_INTERRUPT = config.get("uartInterrupt").toString();
             UART_STA = config.get("uartSTA").toString();
             UART_TX = config.get("uartTX").toString();
-            REQUEST_FILE = config.get("requestFile").toString();
-            RESPONSE_FILE = config.get("responseFile").toString();
-        } catch (Exception e) {
+        } catch (FileNotFoundException e) {
             messageHandler.outputError(e);
-            // return false;
+            messageHandler.outputMessage("Are you sure you placed config.yml in the correct folder?");
+            return false;
+        } catch (SecurityException e) {
+            messageHandler.outputMessage(e.toString());
+            return false;
+        } catch (NullPointerException e) {
+            messageHandler.outputError(e);
+            messageHandler.outputMessage("Are you sure you have all of the necessary config fields?");
+            return false;
+        } catch (ClassCastException e) {
+            messageHandler.outputError(e);
+            return false;
         }
+
         sfrs = DS.getSFRSet();
         sfrRX = sfrs.getSFR(UART_RX);
         sfrInterrupt = sfrs.getSFR(UART_INTERRUPT);
@@ -84,33 +94,14 @@ public class Uart implements Peripheral {
             periphSet.removePeripheral(uartPeriph);
         }
 
-        // Setup pipes
-        /* try {
-            request = new FileOutputStream(REQUEST_FILE);
-            response = new FileInputStream(RESPONSE_FILE);
-        } catch (FileNotFoundException e) {
-            messageHandler.outputMessage("Exception in init: " + e);
+        if (!openSockets()) {
             return false;
-        } */
-        
+        }
 
-        try {
-            Socket reqSocket = new Socket("localhost", 5556);
-            request = new BufferedOutputStream(reqSocket.getOutputStream());
-            response = new BufferedInputStream(reqSocket.getInputStream());
-        } catch (Exception e) {
-            messageHandler.outputError(e);
-        } 
-
-        // Add observers
-        UartObserver obs = new UartObserver();
-        sfrTX.addObserver(obs);
+        sfrTX.addObserver(sfrTXObserver);
         
-        messageHandler.outputMessage("External Peripheral Initialized: UART");
-        instance = this;
-        
-        // Add peripheral to list and return true
-        DS.getPeripheralSet().addToActivePeripheralList(this);
+        messageHandler.outputMessage("External Peripheral Initialized: UART");   
+        periphSet.addToActivePeripheralList(this);
         return true;
     }
 
@@ -124,6 +115,7 @@ public class Uart implements Peripheral {
         }
     }
 
+    // Unimplemented method of interface. Most PeripheralObserver applications that'd be of use are covered by deInit().
     @Override
     public void addObserver(PeripheralObserver observer) {
 
@@ -134,6 +126,7 @@ public class Uart implements Peripheral {
         return UART_NUM + "_SIM";
     }
 
+    // Unimplemented method of interface. Most PeripheralObserver applications that'd be of use are covered by deInit().
     @Override
     public void removeObserver(PeripheralObserver observer) {
 
@@ -146,26 +139,30 @@ public class Uart implements Peripheral {
 
     @Override
     public void update() {
-        if (cycleCount % (267) == 0) {
-            try {
-                if (response.available() > 0) {
-                    messageHandler.outputMessage(response.available() + "");
-                    chars.add((byte) response.read());
-                }
-            } catch (IOException e) {
-                messageHandler.outputMessage("Exception reading character from res " + e);
-                return;
+        if (sfrTXObserver.changed()) {
+            output();
+        }
+        try {
+            if (response.available() > 0) {
+                messageHandler.outputMessage(response.available() + "");
+                chars.add((byte) response.read());
             }
-            if (!chars.isEmpty()) { // Inject anything in chars
-                if (sfrSTA.getFieldValue("UTXEN") == 1) { // If STA is ready to receive !! IMPORTANT
+        } catch (IOException e) {
+            messageHandler.outputMessage("Exception reading character from res " + e);
+            return;
+        }
+        if (!chars.isEmpty()) {
+            if (cycleCount == 521) {
+                if (sfrSTA.getFieldValue("UTXEN") == 1) {
                     messageHandler.outputMessage("Injecting: " + chars.peek());
-                    // messageHandler.outputMessage(chars.peek() + ""); // Returns the next char which will be injected
-                    sfrRX.privilegedWrite(chars.pop()); // Inject the next char
-                    sfrInterrupt.privilegedSetFieldValue("U2RXIF", 1); // Trigger the interrupt
+                    sfrRX.privilegedWrite(chars.pop());
+                    sfrInterrupt.privilegedSetFieldValue("U2RXIF", 1);
                 }
+                cycleCount = 0;
+            } else {
+                cycleCount++;
             }
         }
-        cycleCount++;
     }
 
     // Debugging function for manually adding a string to chars
@@ -181,12 +178,38 @@ public class Uart implements Peripheral {
             byte b = (byte) sfrTX.read();
             request.write(b); 
             request.flush();
-        } catch (Exception e) {
-            messageHandler.outputMessage("Failed to write request byte " + e);
+        } catch (IOException e) {
+            messageHandler.outputMessage("Failed to write request byte... Attempting to reopen sockets.\n" + e);
+            openSockets();
         }
     }
-    
-    public static Uart get() {
-        return instance;
+
+    public boolean openSockets() {
+        try {
+            reqSocket = new Socket("localhost", 5556);
+        } catch (IOException e) {
+            messageHandler.outputError(e);
+            messageHandler.outputMessage("Failed to open socket. Is there an external listener running?");
+            return false;
+        } catch (SecurityException e) {
+            messageHandler.outputError(e);
+            return false;
+        } catch (IllegalArgumentException e) {
+            messageHandler.outputError(e);
+            messageHandler.outputMessage("Provided port is outside of valid values (0-65535).");
+            return false;
+        } catch (NullPointerException e) {
+            messageHandler.outputError(e);
+            return false;
+        }
+        try {
+            request = new BufferedOutputStream(reqSocket.getOutputStream());
+            response = new BufferedInputStream(reqSocket.getInputStream());
+        } catch (IOException e) {
+            messageHandler.outputError(e);
+            messageHandler.outputMessage("Failed to open Req/Res streams.");
+            return false;
+        }
+        return true;
     }
 }

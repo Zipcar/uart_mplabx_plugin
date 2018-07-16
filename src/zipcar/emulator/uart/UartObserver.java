@@ -14,12 +14,22 @@ import com.microchip.mplab.mdbcore.simulator.SFR;
  */
 public class UartObserver implements SFRObserver {
 
+    boolean hasChanged = false;
+
     @Override
     public void update(SFR generator, SFREvent event, SFREventSource source) {
 
         if (event == SFREvent.SFR_CHANGED) {
-            Uart.get().output();
+            hasChanged = true;
         }
 
     }
+
+    // Sets hasChanged to false and returns previous state
+    public boolean changed() {
+        boolean tempHasChanged = hasChanged;
+        hasChanged = false;
+        return tempHasChanged;
+    }
+
 }
