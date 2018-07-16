@@ -152,7 +152,7 @@ public class Uart implements Peripheral {
             return;
         }
         if (!chars.isEmpty()) {
-            if (cycleCount == 267) {
+            if (cycleCount == 521) {
                 if (sfrSTA.getFieldValue("UTXEN") == 1) {
                     messageHandler.outputMessage("Injecting: " + chars.peek());
                     sfrRX.privilegedWrite(chars.pop());
