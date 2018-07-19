@@ -148,7 +148,8 @@ public class Uart implements Peripheral {
                 chars.add((byte) response.read());
             }
         } catch (IOException e) {
-            messageHandler.outputMessage("Exception reading character from res " + e);
+            messageHandler.outputMessage("Can't read from response socket, reopening socket...");
+            openSockets();
             return;
         }
         if (!chars.isEmpty()) {
